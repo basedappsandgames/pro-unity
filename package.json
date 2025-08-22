@@ -1,0 +1,47 @@
+{
+  "name": "gg.wildwest.pro",
+  "version": "1.0.0",
+  "displayName": "PRO",
+  "description": "Run your game like a PRO",
+  "unity": "2021.3",
+  "unityRelease": "0b4",
+  "documentationUrl": "https://example.com/",
+  "changelogUrl": "https://example.com/changelog.html",
+  "licensesUrl": "https://example.com/licensing.html",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1",
+    "com.unity.mathematics": "1.3.2"
+  },
+  "optionalDependencies": {
+    "com.normalvr.normcore": "*"
+  },
+  "keywords": [
+    "safety",
+    "moderation",
+    "voice",
+    "pro",
+    "tooling"
+  ],
+  "author": {
+    "name": "Wild West Labs",
+    "email": "howdy@wildwest.gg",
+    "url": "https://wildwest.gg"
+  },
+  "samples": [
+    {
+      "displayName": "PRO Demo Scene",
+      "description": "A demo scene with minimal working PRO setup.",
+      "path": "Samples~/DemoScene"
+    },
+    {
+      "displayName": "Prefabs",
+      "description": "Prefabs for PROManager, PROConfig, and PRORecordingSource.",
+      "path": "Samples~/Prefabs"
+    },
+    {
+      "displayName": "PRO Photon Recording Source",
+      "description": "Script: Photon recording source.",
+      "path": "Samples~/Photon"
+    }
+  ]
+}
