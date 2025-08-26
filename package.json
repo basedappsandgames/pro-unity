@@ -42,6 +42,11 @@
       "displayName": "PRO Photon Recording Source",
       "description": "Script: Example Photon recording source.",
       "path": "Samples~/Photon"
+    },
+    {
+      "displayName": "Sample PRO Config",
+      "description": "Sample configuration script",
+      "path": "Samples~/SampleConfig"
     }
   ]
 }
