@@ -7,6 +7,7 @@ using System;
 using UnityEngine;
 #if PHOTON_UNITY_NETWORKING
 using Photon.Voice;
+using Photon.Voice.Unity;
 #endif
 
 namespace Wildwest.Pro
@@ -49,6 +50,8 @@ namespace Wildwest.Pro
             get => _proManager;
             set => _proManager = value;
         }
+
+        public bool IsRecording { get; private set; }
 
 #if PHOTON_UNITY_NETWORKING
         private LocalVoiceAudioFloat _voice;

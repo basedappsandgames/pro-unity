@@ -40,7 +40,7 @@
     },
     {
       "displayName": "PRO Photon Recording Source",
-      "description": "Script: Photon recording source.",
+      "description": "Script: Example Photon recording source.",
       "path": "Samples~/Photon"
     }
   ]

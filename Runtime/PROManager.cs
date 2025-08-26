@@ -1,5 +1,6 @@
 /// LICENSE WILD WEST LABS, INC: APACHE 2.0 [https://opensource.org/license/apache-2-0]
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,16 +10,9 @@ using UnityEngine.Networking;
 
 namespace Wildwest.Pro
 {
-    public enum PRORecordingSource
-    {
-        Normcore,
-        Photon,
-        Microphone,
-    }
-
     /// <summary>
-    /// Listens to Normcore's RealtimeAvatarVoice stream, collects X-second chunks,
-    /// converts them to 16-bit PCM WAV, and uploads them to the backend via Database.UploadVoiceChunk.
+    /// Listens to a recording source, collects X-second chunks,
+    /// converts them to 16-bit PCM WAV, and uploads them to the backend via UploadVoiceChunk.
     /// </summary>
     public class PROManager : MonoBehaviour
     {
@@ -35,8 +29,6 @@ namespace Wildwest.Pro
         // Delegates set by game code to control recording and provide metadata
         public Func<bool> CanRecord { private get; set; }
         public Func<AudioEventMetadata> GetMetadata { private get; set; }
-
-        public PRORecordingSource RecordingSource { private get; set; }
 
         // Internal buffers
         private float[] _chunkBuffer;
@@ -59,6 +51,12 @@ namespace Wildwest.Pro
         private DateTime _sessionTokenExpiresAt;
         private bool _isInitialized = false;
 
+        private bool _requestFileUrl = false;
+        private bool _requestEvaluation = false;
+        private bool _requestActions = false;
+        private bool _requestTranscription = false;
+        private bool _requestRuleViolations = false;
+
         public async Task Initialize(
             Func<bool> canRecord,
             Func<AudioEventMetadata> getMetadata,
@@ -66,7 +64,12 @@ namespace Wildwest.Pro
             string endpointUrl,
             string moderationsEndpointPath,
             string sessionsEndpointPath,
-            string apiKey
+            string apiKey,
+            bool requestActions = true,
+            bool requestFileUrl = false,
+            bool requestEvaluation = false,
+            bool requestTranscription = false,
+            bool requestRuleViolations = false
         )
         {
             if (_isInitialized)
@@ -87,6 +90,11 @@ namespace Wildwest.Pro
             ModerationsEndpointPath = moderationsEndpointPath;
             SessionsEndpointPath = sessionsEndpointPath;
             ApiKey = apiKey;
+            _requestFileUrl = requestFileUrl;
+            _requestEvaluation = requestEvaluation;
+            _requestActions = requestActions;
+            _requestTranscription = requestTranscription;
+            _requestRuleViolations = requestRuleViolations;
             var sessionTokenResponse = await RequestSessionToken();
             _sessionToken = sessionTokenResponse.jwt;
             _sessionTokenExpiresAt = DateTime.UtcNow.AddSeconds(4 * 60 * 60); // 4 hours
@@ -185,18 +193,35 @@ namespace Wildwest.Pro
             }
 
             var metadata = GetMetadata();
-            (bool flagged, PROModerationData[] data, string errorMessage) = await UploadVoiceChunk(
+            (PROModerationResult[] data, string errorMessage) = await UploadVoiceChunk(
                 ApiKey,
                 _sessionToken,
                 EndpointUrl + ModerationsEndpointPath,
                 metadata.UserId,
                 wavBytes,
-                metadata.RoomId
+                metadata.RoomId,
+                _requestActions,
+                _requestFileUrl,
+                _requestEvaluation,
+                _requestTranscription,
+                _requestRuleViolations
             );
-            if (flagged)
+            if (errorMessage != null)
             {
                 Debug.LogError(
-                    "[PRO] Chunk flagged: " + string.Join(", ", data.SelectMany(d => d.s))
+                    "<color=red>[PRO] Error uploading chunk: " + errorMessage + "</color>"
+                );
+            }
+            else if (
+                data.Length > 0
+                && data[0].Transcription != null
+                && data[0].Transcription.Length > 0
+            )
+            {
+                Debug.LogError(
+                    "<color=yellow>[PRO] Chunk transcribed: "
+                        + string.Join(", ", data[0].Transcription)
+                        + "</color>"
                 );
             }
         }
@@ -233,10 +258,8 @@ namespace Wildwest.Pro
 
         private async Task<SessionTokenResponse> RequestSessionToken()
         {
-            Debug.LogError("API KEY: " + ApiKey);
             var payloadDict = new SessionTokenRequest { user_id = GetMetadata().UserId };
             string jsonPayload = JsonConvert.SerializeObject(payloadDict);
-            Debug.LogError($"{EndpointUrl}{SessionsEndpointPath}");
             using UnityWebRequest request = new($"{EndpointUrl}{SessionsEndpointPath}", "POST");
             request.SetRequestHeader("Authorization", "Bearer " + ApiKey);
             byte[] jsonToSend = new System.Text.UTF8Encoding().GetBytes(jsonPayload);
@@ -307,20 +330,53 @@ namespace Wildwest.Pro
 
         public class PROModerationResponse
         {
-            public PROModerationAnalysis[] results;
+            public PROModerationResponseItem[] results;
             public ErrorResponse error;
+        }
+
+        public class PROModerationResponseItem
+        {
+            public PROModerationAnalysis a;
+            public string fileUrl;
+            public string id;
+            public string type; // "audio" | "text" | "image" | "video"
+            public PROActionData[] act; // actions to take
+            public string[] rv; // list of rule violations
         }
 
         public class PROModerationAnalysis
         {
-            public PROModerationData a;
-        }
-
-        public class PROModerationData
-        {
             public bool hs; // has hate speech?
             public float chs; // confidence in hate speech
             public string[] s; // list of slurs
+            public string ta; // transcribed audio
+            public Dictionary<string, double> e; // 6 categories of safety scores
+        }
+
+        public class PROModerationResult
+        {
+            public Dictionary<string, double> SafetyScores;
+            public string Transcription;
+            public string FileUrl;
+            public string[] RulesViolated;
+            public PROActionData[] Actions;
+        }
+
+        public enum PROAction
+        {
+            None,
+            Timeout,
+            Kick,
+            Strike,
+            Ban,
+            Custom,
+        }
+
+        public class PROActionData
+        {
+            public PROAction Action;
+            public int CustomNumber;
+            public string CustomString;
         }
 
         /// <summary>
@@ -334,8 +390,7 @@ namespace Wildwest.Pro
         /// <param name="sessionToken">Session token used for request authentication.</param>
         /// <returns>Tuple containing flagged status and error message (null if successful).</returns>
         public static async Task<(
-            bool flagged,
-            PROModerationData[] data,
+            PROModerationResult[] results,
             string errorMessage
         )> UploadVoiceChunk(
             string apiKey,
@@ -343,12 +398,17 @@ namespace Wildwest.Pro
             string url,
             string userId,
             byte[] wavBytes,
-            string roomId
+            string roomId,
+            bool requestActions,
+            bool requestFileUrl,
+            bool requestEvaluation,
+            bool requestTranscription,
+            bool requestRuleViolations
         )
         {
             if (wavBytes == null || wavBytes.Length == 0)
             {
-                return (false, new PROModerationData[0], "Empty buffer");
+                return (new PROModerationResult[0], "Empty buffer");
             }
 
             // Build multipart/form-data payload that matches the new moderation API.
@@ -359,6 +419,11 @@ namespace Wildwest.Pro
                 {
                     user_id = userId, // must be the meta user id
                     room_id = roomId,
+                    request_file_url = requestFileUrl,
+                    request_evaluation = requestEvaluation,
+                    request_actions = requestActions,
+                    request_transcription = requestTranscription,
+                    request_rule_violations = requestRuleViolations,
                     items = new[]
                     {
                         new
@@ -425,7 +490,7 @@ namespace Wildwest.Pro
                         $"[PRO] network/HTTP error: {request.error} - Status Code: {request.responseCode}. Raw Response: {responseData}"
                     );
                 }
-                return (false, new PROModerationData[0], errorMessage);
+                return (new PROModerationResult[0], errorMessage);
             }
             else
             {
@@ -434,10 +499,17 @@ namespace Wildwest.Pro
                     && proModerationResponse.results.Length > 0
                 )
                 {
-                    // if any of the results a.hs is true, return true
                     return (
-                        proModerationResponse.results.Any(result => result.a.hs),
-                        proModerationResponse.results.Select(result => result.a).ToArray(),
+                        proModerationResponse
+                            .results.Select(result => new PROModerationResult
+                            {
+                                SafetyScores = result.a.e,
+                                Transcription = result.a.ta,
+                                FileUrl = result.fileUrl,
+                                RulesViolated = result.rv,
+                                Actions = result.act,
+                            })
+                            .ToArray(),
                         null
                     );
                 }
@@ -447,7 +519,7 @@ namespace Wildwest.Pro
                     Debug.LogError(
                         $"[PRO] request returned HTTP {request.responseCode} but contained an error: {errorMessage}. Raw Response: {responseData}"
                     );
-                    return (false, new PROModerationData[0], errorMessage);
+                    return (new PROModerationResult[0], errorMessage);
                 }
                 else
                 {
@@ -455,7 +527,7 @@ namespace Wildwest.Pro
                     Debug.LogError(
                         $"[PRO] response has unexpected structure (HTTP {request.responseCode}) despite success. Raw response: {responseData}"
                     );
-                    return (false, new PROModerationData[0], errorMessage);
+                    return (new PROModerationResult[0], errorMessage);
                 }
             }
         }

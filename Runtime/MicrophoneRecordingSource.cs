@@ -24,9 +24,21 @@ namespace Wildwest.Pro
         private float[] _audioBuffer;
         private int _chunkDurationSec;
 
+        // Permission caching to avoid checking every frame
+        private bool _hasPermissionCached = false;
+        private bool _permissionCacheValid = false;
+
+        /// <summary>
+        /// Checks if we can record this frame
+        /// </summary>
         public bool CanRecord()
         {
-            return true;
+            if (!_permissionCacheValid)
+            {
+                _hasPermissionCached = HasMicrophonePermission();
+                _permissionCacheValid = true;
+            }
+            return _hasPermissionCached && GetMicrophoneDeviceCount() > 0;
         }
 
         public void Initialize(PROManager proManager, int chunkDurationSec)
@@ -113,7 +125,10 @@ namespace Wildwest.Pro
                 System.Array.Copy(_audioBuffer, 0, frameData, 0, samplesToRead);
 
                 // Send the audio data to PROManager
-                _proManager.OnVoiceData(frameData);
+                if (frameData.Length > 0 && IsRecording)
+                {
+                    _proManager.OnVoiceData(frameData);
+                }
 
                 _lastSamplePosition = currentPosition;
             }
@@ -136,6 +151,35 @@ namespace Wildwest.Pro
         private string GetDefaultMicrophone()
         {
             return (Microphone.devices.Length > 0) ? Microphone.devices[0] : "Not set";
+        }
+
+        /// <summary>
+        /// Refreshes the cached permission status. Call this when you suspect
+        /// permissions may have changed (e.g., after requesting permissions,
+        /// when app resumes from background)
+        /// </summary>
+        public void RefreshPermissionCache()
+        {
+            _permissionCacheValid = false;
+        }
+
+        void OnApplicationFocus(bool hasFocus)
+        {
+            if (hasFocus)
+            {
+                // Refresh permission cache when app regains focus
+                // in case user changed permissions in system settings
+                RefreshPermissionCache();
+            }
+        }
+
+        void OnApplicationPause(bool pauseStatus)
+        {
+            if (!pauseStatus)
+            {
+                // Refresh permission cache when app resumes from pause
+                RefreshPermissionCache();
+            }
         }
     }
 }

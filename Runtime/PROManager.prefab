@@ -61,10 +61,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _proManager: {fileID: 8984470492919220518}
   _recordingSourceObject: {fileID: 2186684395167115211}
-  _debug: 1
+  _debug: 0
   _chunkDurationSeconds: 15
-  _baseEndpointUrl: http://localhost:9999
-  _APIKey: sk_live.a43873ee8bb7cd4bb713ed1e40992469.jIUd8HvCoXSRoCMy3uxI8pgpW4pd_R2aoZQcwCmn_3s
+  _APIKey: 
 --- !u!1 &2186684395167115211
 GameObject:
   m_ObjectHideFlags: 0
