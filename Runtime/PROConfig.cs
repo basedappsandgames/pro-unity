@@ -26,7 +26,7 @@ namespace Wildwest.Pro
         [SerializeField, Tooltip("Request actions from the backend")]
         private bool _requestActions = true;
         [SerializeField, Tooltip("Request evaluation from the backend")]
-        private bool _requestEvaluation = true;
+        private bool _requestSafetyScores = true;
 
         [SerializeField, Tooltip("Request transcription from the backend")]
         private bool _requestTranscription = true;
@@ -70,7 +70,7 @@ namespace Wildwest.Pro
                 _APIKey,
                 _requestActions,
                 _requestFileUrl,
-                _requestEvaluation,
+                _requestSafetyScores,
                 _requestTranscription,
                 _requestRuleViolations
             ); // MUST CALL

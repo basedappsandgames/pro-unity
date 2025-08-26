@@ -52,7 +52,7 @@ namespace Wildwest.Pro
         private bool _isInitialized = false;
 
         private bool _requestFileUrl = false;
-        private bool _requestEvaluation = false;
+        private bool _requestSafetyScores = false;
         private bool _requestActions = false;
         private bool _requestTranscription = false;
         private bool _requestRuleViolations = false;
@@ -91,7 +91,7 @@ namespace Wildwest.Pro
             SessionsEndpointPath = sessionsEndpointPath;
             ApiKey = apiKey;
             _requestFileUrl = requestFileUrl;
-            _requestEvaluation = requestEvaluation;
+            _requestSafetyScores = requestEvaluation;
             _requestActions = requestActions;
             _requestTranscription = requestTranscription;
             _requestRuleViolations = requestRuleViolations;
@@ -202,7 +202,7 @@ namespace Wildwest.Pro
                 metadata.RoomId,
                 _requestActions,
                 _requestFileUrl,
-                _requestEvaluation,
+                _requestSafetyScores,
                 _requestTranscription,
                 _requestRuleViolations
             );
