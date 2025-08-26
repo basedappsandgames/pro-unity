@@ -218,9 +218,17 @@ namespace Wildwest.Pro
                 && data[0].Transcription.Length > 0
             )
             {
-                Debug.LogError(
+                Debug.Log(
                     "<color=yellow>[PRO] Chunk transcribed: "
                         + string.Join(", ", data[0].Transcription)
+                        + "</color>"
+                );
+            }
+            else if (data.Length > 0 && data[0].Actions.Length > 0)
+            {
+                Debug.Log(
+                    "<color=yellow>[PRO] Chunk flagged: "
+                        + string.Join(", ", data[0].Actions.Select(a => a.Action.ToString()))
                         + "</color>"
                 );
             }
