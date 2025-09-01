@@ -29,6 +29,7 @@ namespace Wildwest.Pro
         // Delegates set by game code to control recording and provide metadata
         public Func<bool> CanRecord { private get; set; }
         public Func<AudioEventMetadata> GetMetadata { private get; set; }
+        public Action<PROModerationResult[], string> OnData { private get; set; }
 
         // Internal buffers
         private float[] _chunkBuffer;
@@ -60,6 +61,7 @@ namespace Wildwest.Pro
         public async Task Initialize(
             Func<bool> canRecord,
             Func<AudioEventMetadata> getMetadata,
+            Action<PROModerationResult[], string> onData,
             int chunkDurationSec,
             string endpointUrl,
             string moderationsEndpointPath,
@@ -84,6 +86,7 @@ namespace Wildwest.Pro
             }
             CanRecord = canRecord;
             GetMetadata = getMetadata;
+            OnData = onData;
             _chunkDurationSeconds = chunkDurationSec;
             // must set these before requesting session token
             EndpointUrl = endpointUrl;
@@ -212,26 +215,7 @@ namespace Wildwest.Pro
                     "<color=red>[PRO] Error uploading chunk: " + errorMessage + "</color>"
                 );
             }
-            if (data.Length > 0 && data[0].SafetyScores.Count > 0)
-            {
-                Debug.Log(
-                    "<color=yellow>[PRO] Chunk rated: "
-                        + string.Join(
-                            ", ",
-                            data[0].SafetyScores.Select(s => s.Key + ": " + s.Value)
-                        )
-                        + (data[0].Transcription != null ? " - " + data[0].Transcription : "")
-                        + "</color>"
-                );
-            }
-            if (data.Length > 0 && data[0].Actions.Length > 0)
-            {
-                Debug.Log(
-                    "<color=yellow>[PRO] Chunk flagged: "
-                        + string.Join(", ", data[0].Actions.Select(a => a.Action.ToString()))
-                        + "</color>"
-                );
-            }
+            OnData(data, errorMessage);
         }
 
         public struct AudioEventMetadata

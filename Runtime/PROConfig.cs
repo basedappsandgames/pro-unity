@@ -23,8 +23,10 @@ namespace Wildwest.Pro
 
         [SerializeField, Tooltip("API key for the endpoint")]
         private string _APIKey = "";
+
         [SerializeField, Tooltip("Request actions from the backend")]
         private bool _requestActions = true;
+
         [SerializeField, Tooltip("Request evaluation from the backend")]
         private bool _requestSafetyScores = true;
 
@@ -63,6 +65,7 @@ namespace Wildwest.Pro
             await _proManager.Initialize(
                 CanRecord,
                 GetMetadata,
+                OnData,
                 _chunkDurationSeconds,
                 _baseEndpointUrl,
                 _moderationsEndpointPath,
@@ -132,6 +135,31 @@ namespace Wildwest.Pro
         {
             // TODO: replace with your room ID (eg from Normcore, Photon, etc)
             return Application.productName.ToLower().Replace(" ", "_");
+        }
+
+        private void OnData(PROManager.PROModerationResult[] data, string errorMessage)
+        {
+            string scoresResults = "";
+            foreach (var score in data[0].SafetyScores)
+            {
+                scoresResults += $"{score.Key}: {score.Value}, ";
+            }
+            string transcriptionResults =
+                data[0].Transcription != null ? $" - {data[0].Transcription}" : "";
+            string actionsResults = "";
+            foreach (var action in data[0].Actions)
+            {
+                actionsResults += $"{action.Action.ToString()}, ";
+            }
+            string errorResults = errorMessage != null ? $" - {errorMessage}" : "";
+            Debug.Log(
+                "<color=yellow>[PRO] Chunk rated: "
+                    + scoresResults
+                    + transcriptionResults
+                    + actionsResults
+                    + errorResults
+                    + "</color>"
+            );
         }
     }
 }
