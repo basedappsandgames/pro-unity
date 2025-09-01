@@ -212,19 +212,19 @@ namespace Wildwest.Pro
                     "<color=red>[PRO] Error uploading chunk: " + errorMessage + "</color>"
                 );
             }
-            else if (
-                data.Length > 0
-                && data[0].Transcription != null
-                && data[0].Transcription.Length > 0
-            )
+            if (data.Length > 0 && data[0].SafetyScores.Count > 0)
             {
                 Debug.Log(
-                    "<color=yellow>[PRO] Chunk transcribed: "
-                        + string.Join(", ", data[0].Transcription)
+                    "<color=yellow>[PRO] Chunk rated: "
+                        + string.Join(
+                            ", ",
+                            data[0].SafetyScores.Select(s => s.Key + ": " + s.Value)
+                        )
+                        + (data[0].Transcription != null ? " - " + data[0].Transcription : "")
                         + "</color>"
                 );
             }
-            else if (data.Length > 0 && data[0].Actions.Length > 0)
+            if (data.Length > 0 && data[0].Actions.Length > 0)
             {
                 Debug.Log(
                     "<color=yellow>[PRO] Chunk flagged: "
@@ -268,7 +268,10 @@ namespace Wildwest.Pro
         {
             var payloadDict = new SessionTokenRequest { user_id = GetMetadata().UserId };
             string jsonPayload = JsonConvert.SerializeObject(payloadDict);
-            using UnityWebRequest request = new($"{EndpointUrl}{SessionsEndpointPath}", "POST");
+            using UnityWebRequest request = new UnityWebRequest(
+                $"{EndpointUrl}{SessionsEndpointPath}",
+                "POST"
+            );
             request.SetRequestHeader("Authorization", "Bearer " + ApiKey);
             byte[] jsonToSend = new System.Text.UTF8Encoding().GetBytes(jsonPayload);
             request.uploadHandler = new UploadHandlerRaw(jsonToSend);
@@ -459,7 +462,11 @@ namespace Wildwest.Pro
             using UnityWebRequest request = UnityWebRequest.Post(url, form);
             request.SetRequestHeader("Authorization", "Bearer " + sessionToken);
             request.SetRequestHeader("x-api-key", apiKey);
-            await request.SendWebRequest();
+            var asyncOpUpload = request.SendWebRequest();
+            while (!asyncOpUpload.isDone)
+            {
+                await Task.Yield();
+            }
             string responseData = request.downloadHandler?.text;
             PROModerationResponse proModerationResponse = null;
             try
