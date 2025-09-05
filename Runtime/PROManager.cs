@@ -16,13 +16,9 @@ namespace Wildwest.Pro
     /// </summary>
     public class PROManager : MonoBehaviour
     {
-        [
-            SerializeField,
-            Tooltip(
-                "Silence threshold (absolute sample value); chunk is skipped if all samples <= threshold."
-            )
-        ]
-        private float _silenceThreshold = 0.021f;
+        [Header("Audio Processing")]
+        [SerializeField]
+        private AudioChunkerBehaviour Chunker;
 
         private int _chunkDurationSeconds;
 
@@ -31,27 +27,15 @@ namespace Wildwest.Pro
         public Func<AudioEventMetadata> GetMetadata { private get; set; }
         public Action<PROModerationResult[], string> OnData { private get; set; }
 
-        // Internal buffers
-        private float[] _chunkBuffer;
-        private int _sampleIndex;
-        private int _samplesPerChunk;
-        private int _sampleRate = 16000;
-        private int _channelCount = 1;
-
-        private const int TargetSampleRate = 16000;
-        private int _downsampleFactor = 1;
-
-        private readonly MemoryStream _reusableStream = new MemoryStream();
-
         private string EndpointUrl;
         private string ModerationsEndpointPath;
         private string SessionsEndpointPath;
-        private string ApiKey;
+        private string ApiKey; // optional if you use your own server to get a PRO JWT and SetSessionToken
 
         private string _sessionToken;
-        private DateTime _sessionTokenExpiresAt;
         private bool _isInitialized = false;
 
+        // default to not sending back any fields to client
         private bool _requestFileUrl = false;
         private bool _requestSafetyScores = false;
         private bool _requestActions = false;
@@ -76,8 +60,9 @@ namespace Wildwest.Pro
         {
             if (_isInitialized)
             {
-                Debug.LogError("PROManager: Already initialized");
-                return;
+                Debug.LogWarning(
+                    "PROManager: Already initialized, you should not be calling this method multiple times"
+                );
             }
             if (apiKey == null || apiKey.Length == 0)
             {
@@ -87,7 +72,7 @@ namespace Wildwest.Pro
             CanRecord = canRecord;
             GetMetadata = getMetadata;
             OnData = onData;
-            _chunkDurationSeconds = chunkDurationSec;
+            SetChunkDurationSeconds(chunkDurationSec);
             // must set these before requesting session token
             EndpointUrl = endpointUrl;
             ModerationsEndpointPath = moderationsEndpointPath;
@@ -100,18 +85,152 @@ namespace Wildwest.Pro
             _requestRuleViolations = requestRuleViolations;
             var sessionTokenResponse = await RequestSessionToken();
             _sessionToken = sessionTokenResponse.jwt;
-            _sessionTokenExpiresAt = DateTime.UtcNow.AddSeconds(4 * 60 * 60); // 4 hours
             _isInitialized = true;
         }
 
+        // Used your own server to get the PRO JWT for a more secure authentication?
+        // Use this method instead of Initialize to pass in the session token
+        public async Task InitializeWithSessionToken(
+            Func<bool> canRecord,
+            Func<AudioEventMetadata> getMetadata,
+            Action<PROModerationResult[], string> onData,
+            int chunkDurationSec,
+            string endpointUrl,
+            string moderationsEndpointPath,
+            string sessionsEndpointPath,
+            string sessionToken,
+            bool requestActions = true,
+            bool requestFileUrl = false,
+            bool requestEvaluation = false,
+            bool requestTranscription = false,
+            bool requestRuleViolations = false
+        )
+        {
+            if (_isInitialized)
+            {
+                Debug.LogWarning(
+                    "PROManager: Already initialized, you should not be calling this method multiple times"
+                );
+            }
+            if (sessionToken == null || sessionToken.Length == 0)
+            {
+                Debug.LogError("PROManager: Session token is not set");
+                return;
+            }
+            CanRecord = canRecord;
+            GetMetadata = getMetadata;
+            OnData = onData;
+            SetChunkDurationSeconds(chunkDurationSec);
+            EndpointUrl = endpointUrl;
+            ModerationsEndpointPath = moderationsEndpointPath;
+            SessionsEndpointPath = sessionsEndpointPath;
+            _requestFileUrl = requestFileUrl;
+            _requestSafetyScores = requestEvaluation;
+            _requestActions = requestActions;
+            _requestTranscription = requestTranscription;
+            _requestRuleViolations = requestRuleViolations;
+            _sessionToken = sessionToken;
+        }
+
+        public void SetApiKey(string apiKey)
+        {
+            ApiKey = apiKey;
+            CheckSetInitialized();
+        }
+
+        public void SetCanRecord(Func<bool> canRecord)
+        {
+            CanRecord = canRecord;
+            CheckSetInitialized();
+        }
+
+        public void SetGetMetadata(Func<AudioEventMetadata> getMetadata)
+        {
+            GetMetadata = getMetadata;
+            CheckSetInitialized();
+        }
+
+        public void SetOnData(Action<PROModerationResult[], string> onData)
+        {
+            OnData = onData;
+            CheckSetInitialized();
+        }
+
+        public void SetChunkDurationSeconds(int chunkDurationSeconds)
+        {
+            _chunkDurationSeconds = chunkDurationSeconds;
+            Chunker.Configure(chunkDurationSeconds);
+            CheckSetInitialized();
+        }
+
+        // [Deprecated]
+        public void SetSampleRate(int sampleRate)
+        {
+            Chunker.Configure(_chunkDurationSeconds, sampleRate, null);
+        }
+
+        // [Deprecated]
+        public void SetChannelCount(int channelCount)
+        {
+            Chunker.Configure(_chunkDurationSeconds, null, channelCount);
+        }
+
+        public void SetEndpointUrl(string endpointUrl)
+        {
+            EndpointUrl = endpointUrl;
+            CheckSetInitialized();
+        }
+
+        public void SetModerationsEndpointPath(string moderationsEndpointPath)
+        {
+            ModerationsEndpointPath = moderationsEndpointPath;
+            CheckSetInitialized();
+        }
+
+        public void SetSessionsEndpointPath(string sessionsEndpointPath)
+        {
+            SessionsEndpointPath = sessionsEndpointPath;
+            CheckSetInitialized();
+        }
+
+        public void SetSessionToken(string sessionToken)
+        {
+            _sessionToken = sessionToken;
+            CheckSetInitialized();
+        }
+
+        private void CheckSetInitialized()
+        {
+            bool hasCanRecord = CanRecord != null;
+            bool hasGetMetadata = GetMetadata != null;
+            bool hasOnData = OnData != null;
+            bool hasChunkDurationSeconds = _chunkDurationSeconds != 0;
+            bool hasEndpointUrl = EndpointUrl != null;
+            bool hasModerationsEndpointPath = ModerationsEndpointPath != null;
+            bool hasSessionsEndpointPath = SessionsEndpointPath != null;
+            bool hasSessionToken = _sessionToken != null;
+            if (
+                hasGetMetadata
+                && hasOnData
+                && hasChunkDurationSeconds
+                && hasEndpointUrl
+                && hasModerationsEndpointPath
+                && hasSessionsEndpointPath
+                && hasSessionToken
+            )
+            {
+                _isInitialized = true;
+            }
+        }
+
+        // called from IRecordingSource to fill the buffer with voice data
         public void OnVoiceData(float[] frame)
         {
             if (!_isInitialized)
             {
-                Debug.LogError(
-                    "[PRO] PROManager: Not initialized. Are you sure you called Initialize()?"
+                Debug.LogWarning(
+                    "[PRO] PROManager: Not initialized. Are you sure you initialized all required fields?"
                 );
-                return;
             }
 
             // Respect caller's policy
@@ -125,71 +244,24 @@ namespace Wildwest.Pro
                 return;
             }
 
-            // Initialise buffers on first callback
-            if (_chunkBuffer == null)
+            if (Chunker.TryAppend(frame, out float[] completeChunk))
             {
-                InitialiseWithFrame();
-            }
-
-            // Copy into rolling buffer
-            AppendChunks(frame);
-        }
-
-        public void AppendChunks(float[] frame)
-        {
-            if (_chunkBuffer == null)
-            {
-                return;
-            }
-            int copyLen = Mathf.Min(frame.Length, _chunkBuffer.Length - _sampleIndex);
-            Array.Copy(frame, 0, _chunkBuffer, _sampleIndex, copyLen);
-            _sampleIndex += copyLen;
-
-            // If we over-filled (should only happen if last frame straddles boundary)
-            if (_sampleIndex >= _samplesPerChunk)
-            {
-                _ = ProcessChunk();
-                _sampleIndex = 0; // start next chunk fresh
+                ProcessChunk(completeChunk);
             }
         }
 
-        private void InitialiseWithFrame()
-        {
-            Debug.Log("<color=green>[PRO] PROManager: Started receiving audio data</color>");
-            // Always initialize the buffer based on current settings
-            _chunkBuffer = new float[_samplesPerChunk];
-            _sampleIndex = 0;
-        }
-
-        private async Task ProcessChunk()
+        public async Task ProcessChunk(float[] chunk)
         {
             if (_sessionToken == null)
             {
                 Debug.LogError(
-                    "[PRO] UploadVoiceChunk called without a session token – skipping upload."
+                    "[PRO] UploadVoiceChunk called without a session token – skipping upload. Did you call Initialize or SetSessionToken?"
                 );
                 return;
             }
-            if (DateTime.UtcNow > _sessionTokenExpiresAt)
-            {
-                Debug.LogError("[PRO] Session token expired, cannot send chunk");
-                return;
-            }
 
-            // Convert to WAV & silence check
-            var (wavBytes, tooQuiet) = PROAudioUtil.ConvertDownsampleAndWav(
-                _chunkBuffer,
-                _sampleRate,
-                _downsampleFactor,
-                _silenceThreshold,
-                _channelCount,
-                TargetSampleRate,
-                _reusableStream
-            );
-            if (tooQuiet)
-            {
-                return; // skip upload
-            }
+            // Convert to 16kHz WAV & silence check
+            byte[] wavBytes = Chunker.Encode(chunk);
             if (wavBytes == null || wavBytes.Length == 0)
             {
                 return;
@@ -215,7 +287,7 @@ namespace Wildwest.Pro
                     "<color=red>[PRO] Error uploading chunk: " + errorMessage + "</color>"
                 );
             }
-            OnData(data, errorMessage);
+            OnData(data, errorMessage); // call the OnData delegate with the moderation results
         }
 
         public struct AudioEventMetadata
@@ -225,17 +297,10 @@ namespace Wildwest.Pro
             public string Language;
         }
 
-        public void SetChannelCount(int channelCount)
+        // called by a RecordingSource to set the sample rate and channels based on the input device
+        public void ConfigureChunker(int sampleRate, int channelCount)
         {
-            _channelCount = channelCount;
-        }
-
-        public void SetSampleRate(int sampleRate)
-        {
-            _sampleRate = sampleRate;
-            _downsampleFactor = Mathf.Max(1, _sampleRate / TargetSampleRate);
-            // Recalculate chunk size based on the new sample rate
-            _samplesPerChunk = _sampleRate * _chunkDurationSeconds * _channelCount;
+            Chunker.Configure(_chunkDurationSeconds, sampleRate, channelCount);
         }
 
         private class SessionTokenRequest
@@ -396,7 +461,7 @@ namespace Wildwest.Pro
             string roomId,
             bool requestActions,
             bool requestFileUrl,
-            bool requestEvaluation,
+            bool requestEvaluation, // show safety scores in response
             bool requestTranscription,
             bool requestRuleViolations
         )
@@ -406,13 +471,19 @@ namespace Wildwest.Pro
                 return (new PROModerationResult[0], "Empty buffer");
             }
 
+            if ((sessionToken == null || sessionToken.Length == 0))
+            {
+                Debug.LogError("Must send a session token to the PROManager");
+                return (new PROModerationResult[0], "Must send a session token to the PROManager");
+            }
+
             // Build multipart/form-data payload that matches the new moderation API.
             // Construct the required "metadata" JSON describing the attached media parts.
             string partName = "audio"; // Name referenced by metadata.items[0].part
             string metadataJson = JsonConvert.SerializeObject(
                 new
                 {
-                    user_id = userId, // must be the meta user id
+                    user_id = userId, // must be a unique user id
                     room_id = roomId,
                     request_file_url = requestFileUrl,
                     request_evaluation = requestEvaluation,
@@ -444,8 +515,12 @@ namespace Wildwest.Pro
             form.AddBinaryData(partName, wavBytes, "audio.wav", "audio/wav");
 
             using UnityWebRequest request = UnityWebRequest.Post(url, form);
+
             request.SetRequestHeader("Authorization", "Bearer " + sessionToken);
-            request.SetRequestHeader("x-api-key", apiKey);
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                request.SetRequestHeader("x-api-key", apiKey);
+            }
             var asyncOpUpload = request.SendWebRequest();
             while (!asyncOpUpload.isDone)
             {
@@ -502,11 +577,11 @@ namespace Wildwest.Pro
                         proModerationResponse
                             .results.Select(result => new PROModerationResult
                             {
-                                SafetyScores = result.a.e,
-                                Transcription = result.a.ta,
-                                FileUrl = result.fileUrl,
-                                RulesViolated = result.rv,
-                                Actions = result.act,
+                                SafetyScores = result.a.e, // only shows if request_evaluation (requestSafetyScores) is true
+                                Transcription = result.a.ta, // only shows if request_transcription is true
+                                FileUrl = result.fileUrl, // only shows if request_file_url is true
+                                RulesViolated = result.rv, // only shows if request_rule_violations is true
+                                Actions = result.act, // only shows if request_actions is true
                             })
                             .ToArray(),
                         null

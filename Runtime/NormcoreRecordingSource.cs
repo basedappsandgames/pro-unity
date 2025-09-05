@@ -57,8 +57,7 @@ namespace Wildwest.Pro
             if (_avatarManager != null)
             {
                 _avatarManager.avatarCreated += OnAvatarCreated;
-                _proManager.SetSampleRate(48000); // based on RealtimeAvatarVoice's sample rate
-                _proManager.SetChannelCount(1); // RealtimeAvatarVoice is mono
+                _proManager.ConfigureChunker(48000, 1); // based on RealtimeAvatarVoice's sample rate, normcore is mono
                 _isInitialized = true;
             }
             else

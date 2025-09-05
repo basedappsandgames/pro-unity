@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 4244091193851777683}
   - component: {fileID: 8984470492919220518}
   - component: {fileID: 5463656714743263158}
+  - component: {fileID: 7530001256831979402}
   m_Layer: 0
   m_Name: PROManager
   m_TagString: Untagged
@@ -46,7 +47,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 377d8b2e062000c40b3fe25a36ca5936, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _silenceThreshold: 0.021
+  Chunker: {fileID: 7530001256831979402}
 --- !u!114 &5463656714743263158
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -64,6 +65,24 @@ MonoBehaviour:
   _debug: 0
   _chunkDurationSeconds: 15
   _APIKey: 
+  _requestActions: 1
+  _requestSafetyScores: 1
+  _requestTranscription: 1
+  _requestFileUrl: 0
+  _requestRuleViolations: 0
+--- !u!114 &7530001256831979402
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 365715881205420293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1dbd44b39d8dcf346a68d413a05a1069, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _silenceThreshold: 0.021
 --- !u!1 &2186684395167115211
 GameObject:
   m_ObjectHideFlags: 0

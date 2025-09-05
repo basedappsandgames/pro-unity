@@ -44,7 +44,7 @@ namespace Wildwest.Pro
         public void Initialize(PROManager proManager, int chunkDurationSec)
         {
             _proManager = proManager;
-            _proManager.SetSampleRate(_sampleRate);
+            _proManager.ConfigureChunker(_sampleRate, 1);
             _chunkDurationSec = chunkDurationSec;
         }
 

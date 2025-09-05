@@ -82,8 +82,7 @@ namespace Wildwest.Pro
             _voice = voiceCreatedParams.Voice as LocalVoiceAudioFloat;
             if (_voice != null)
             {
-                _proManager.SetChannelCount(_voice.Info.Channels);
-                _proManager.SetSampleRate(_voice.Info.SamplingRate);
+                _proManager.ConfigureChunker(_voice.Info.SamplingRate, _voice.Info.Channels);
 
                 _voice.AddPostProcessor(_photonPROProcessor);
             }

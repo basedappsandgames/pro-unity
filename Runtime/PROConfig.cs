@@ -5,7 +5,8 @@ using UnityEngine;
 namespace Wildwest.Pro
 {
     /// <summary>
-    /// Example config script for PROManager. Must have.
+    /// Example config script for PROManager. Must have some form of this.
+    /// Copy and paste this into your own custom script or the package will overwrite it when you update it.
     /// </summary>
     public class PROConfig : MonoBehaviour
     {

@@ -5,6 +5,7 @@ namespace Wildwest.Pro
     {
         PROManager ProManager { get; set; }
         bool CanRecord();
+        // must call ConfigureChunker on the PROManager
         void Initialize(PROManager proManager, int chunkDurationSec);
         void StartRecording();
         void StopRecording();
