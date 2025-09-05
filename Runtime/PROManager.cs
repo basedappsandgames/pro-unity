@@ -42,6 +42,8 @@ namespace Wildwest.Pro
         private bool _requestTranscription = false;
         private bool _requestRuleViolations = false;
 
+        private bool loggedFirstChunk = false;
+
         public async Task Initialize(
             Func<bool> canRecord,
             Func<AudioEventMetadata> getMetadata,
@@ -242,6 +244,12 @@ namespace Wildwest.Pro
             if (frame == null || frame.Length == 0)
             {
                 return;
+            }
+
+            if (!loggedFirstChunk)
+            {
+                Debug.Log($"<color=green>[PRO] Processing first chunk of audio data</color>");
+                loggedFirstChunk = true;
             }
 
             if (Chunker.TryAppend(frame, out float[] completeChunk))

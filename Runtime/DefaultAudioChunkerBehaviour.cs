@@ -50,6 +50,7 @@ public class DefaultAudioChunkerBehaviour : AudioChunkerBehaviour
         if (_sampleIndex >= _samplesPerChunk)
         {
             completeChunk = _chunkBuffer;
+            _sampleIndex = 0;
             return true;
         }
         return false;
