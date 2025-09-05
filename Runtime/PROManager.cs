@@ -434,8 +434,10 @@ namespace Wildwest.Pro
         {
             None,
             Timeout,
+            NewTimeout,
             Kick,
             Strike,
+            NewStrikes,
             Ban,
             Custom,
         }
