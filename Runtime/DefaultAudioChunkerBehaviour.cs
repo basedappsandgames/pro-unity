@@ -28,6 +28,11 @@ public class DefaultAudioChunkerBehaviour : AudioChunkerBehaviour
         _channelCount = channelCount ?? _channelCount;
         _samplesPerChunk = _sampleRate * _channelCount * chunkDurationSeconds;
         _downsampleFactor = Mathf.Max(1, _sampleRate / TargetSampleRate);
+        if (_chunkBuffer != null)
+        {
+            // destroy and free memory old buffer
+            _chunkBuffer = null;
+        }
         _chunkBuffer = new float[_samplesPerChunk];
         _sampleIndex = 0;
     }
