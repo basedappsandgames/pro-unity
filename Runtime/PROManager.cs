@@ -425,6 +425,7 @@ namespace Wildwest.Pro
         public class PROModerationResponse
         {
             // constructor
+            [JsonConstructor, Preserve]
             public PROModerationResponse(PROModerationResponseItem[] results, ErrorResponse error)
             {
                 this.results = results;
@@ -444,6 +445,7 @@ namespace Wildwest.Pro
         public class PROModerationResponseItem
         {
             // constructor
+            [JsonConstructor, Preserve]
             public PROModerationResponseItem(
                 PROModerationAnalysis a,
                 string fileUrl,
@@ -482,6 +484,7 @@ namespace Wildwest.Pro
         public class PROModerationAnalysis
         {
             // constructor
+            [JsonConstructor, Preserve]
             public PROModerationAnalysis(string ta, Dictionary<string, double> e)
             {
                 this.ta = ta;
