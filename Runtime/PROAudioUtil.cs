@@ -19,7 +19,8 @@ public static class PROAudioUtil
         MemoryStream reusableStream
     )
     {
-        int outputSampleCount = samples.Length / factor;
+        // Use ceiling division to ensure the output buffer is large enough
+        int outputSampleCount = (samples.Length + factor - 1) / factor;
         var inputNative = new NativeArray<float>(samples, Allocator.TempJob);
         var outputBytes = new NativeArray<byte>(outputSampleCount * 2, Allocator.TempJob);
         var tooQuietFlag = new NativeArray<byte>(1, Allocator.TempJob); // 1=silent, 0=non-silent
@@ -56,8 +57,10 @@ public static class PROAudioUtil
             bw.Write(16);
             bw.Write((short)1);
             bw.Write((short)channelCount);
-            bw.Write(targetSampleRate);
-            bw.Write(targetSampleRate * channelCount * sizeof(short));
+            // Actual sample rate after integer decimation
+            int actualSampleRate = math.max(1, originalRate / math.max(1, factor));
+            bw.Write(actualSampleRate);
+            bw.Write(actualSampleRate * channelCount * sizeof(short));
             bw.Write((short)(channelCount * sizeof(short)));
             bw.Write((short)16);
             bw.Write(System.Text.Encoding.ASCII.GetBytes("data"));
