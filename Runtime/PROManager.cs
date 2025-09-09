@@ -610,7 +610,6 @@ namespace Wildwest.Pro
             // Build multipart/form-data payload that matches the new moderation API.
             // Construct the required "metadata" JSON describing the attached media parts.
             string partName = "audio"; // Name referenced by metadata.items[0].part
-            Debug.LogError("Uploading chunk with user ID: " + userId);
             var metadataObj = new JObject
             {
                 ["user_id"] = userId,
@@ -632,7 +631,6 @@ namespace Wildwest.Pro
                 },
             };
             string metadataJson = metadataObj.ToString(Formatting.None);
-            Debug.LogError("Metadata JSON: " + metadataJson);
 
             WWWForm form = new WWWForm();
             // Add the metadata part with explicit application/json content type.
