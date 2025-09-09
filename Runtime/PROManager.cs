@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -313,17 +314,29 @@ namespace Wildwest.Pro
 
         private class SessionTokenRequest
         {
+            // constructor
+            public SessionTokenRequest(string user_id)
+            {
+                this.user_id = user_id;
+            }
+
             public string user_id;
         }
 
         private class SessionTokenResponse
         {
+            // constructor
+            public SessionTokenResponse(string jwt)
+            {
+                this.jwt = jwt;
+            }
+
             public string jwt;
         }
 
         private async Task<SessionTokenResponse> RequestSessionToken()
         {
-            var payloadDict = new SessionTokenRequest { user_id = GetMetadata().UserId };
+            var payloadDict = new SessionTokenRequest(GetMetadata().UserId);
             string jsonPayload = JsonConvert.SerializeObject(payloadDict);
             using UnityWebRequest request = new UnityWebRequest(
                 $"{EndpointUrl}{SessionsEndpointPath}",
@@ -392,18 +405,72 @@ namespace Wildwest.Pro
 
         public class ErrorResponse
         {
+            // constructor
+            public ErrorResponse(string message, string code)
+            {
+                this.message = message;
+                this.code = code;
+            }
+
+            public ErrorResponse()
+            {
+                this.message = "";
+                this.code = "";
+            }
+
             public string message;
             public string code;
         }
 
         public class PROModerationResponse
         {
+            // constructor
+            public PROModerationResponse(PROModerationResponseItem[] results, ErrorResponse error)
+            {
+                this.results = results;
+                this.error = error;
+            }
+
+            public PROModerationResponse()
+            {
+                this.results = new PROModerationResponseItem[0];
+                this.error = null;
+            }
+
             public PROModerationResponseItem[] results;
             public ErrorResponse error;
         }
 
         public class PROModerationResponseItem
         {
+            // constructor
+            public PROModerationResponseItem(
+                PROModerationAnalysis a,
+                string fileUrl,
+                string id,
+                string type,
+                PROActionData[] act,
+                string[] rv
+            )
+            {
+                this.a = a;
+                this.fileUrl = fileUrl;
+                this.id = id;
+                this.type = type;
+                this.act = act;
+                this.rv = rv;
+            }
+
+            public PROModerationResponseItem()
+            {
+                this.a = new PROModerationAnalysis();
+                this.fileUrl = "";
+                this.id = "";
+                this.type = "";
+                this.act = new PROActionData[0];
+                this.rv = new string[0];
+            }
+
             public PROModerationAnalysis a;
             public string fileUrl;
             public string id;
@@ -414,15 +481,50 @@ namespace Wildwest.Pro
 
         public class PROModerationAnalysis
         {
-            public bool hs; // has hate speech?
-            public float chs; // confidence in hate speech
-            public string[] s; // list of slurs
+            // constructor
+            public PROModerationAnalysis(string ta, Dictionary<string, double> e)
+            {
+                this.ta = ta;
+                this.e = e;
+            }
+
+            public PROModerationAnalysis()
+            {
+                this.ta = "";
+                this.e = new Dictionary<string, double>();
+            }
+
             public string ta; // transcribed audio
             public Dictionary<string, double> e; // 6 categories of safety scores
         }
 
         public class PROModerationResult
         {
+            // constructor
+            public PROModerationResult(
+                Dictionary<string, double> safetyScores,
+                string transcription,
+                string fileUrl,
+                string[] ruleViolations,
+                PROActionData[] actions
+            )
+            {
+                this.SafetyScores = safetyScores;
+                this.Transcription = transcription;
+                this.FileUrl = fileUrl;
+                this.RulesViolated = ruleViolations;
+                this.Actions = actions;
+            }
+
+            public PROModerationResult()
+            {
+                this.SafetyScores = new Dictionary<string, double>();
+                this.Transcription = "";
+                this.FileUrl = "";
+                this.RulesViolated = new string[0];
+                this.Actions = new PROActionData[0];
+            }
+
             public Dictionary<string, double> SafetyScores;
             public string Transcription;
             public string FileUrl;
@@ -444,6 +546,21 @@ namespace Wildwest.Pro
 
         public class PROActionData
         {
+            // constructor
+            public PROActionData(PROAction action, int customNumber, string customString)
+            {
+                this.Action = action;
+                this.CustomNumber = customNumber;
+                this.CustomString = customString;
+            }
+
+            public PROActionData()
+            {
+                this.Action = PROAction.None;
+                this.CustomNumber = 0;
+                this.CustomString = "";
+            }
+
             public PROAction Action;
             public int CustomNumber;
             public string CustomString;
@@ -490,28 +607,29 @@ namespace Wildwest.Pro
             // Build multipart/form-data payload that matches the new moderation API.
             // Construct the required "metadata" JSON describing the attached media parts.
             string partName = "audio"; // Name referenced by metadata.items[0].part
-            string metadataJson = JsonConvert.SerializeObject(
-                new
+            Debug.LogError("Uploading chunk with user ID: " + userId);
+            var metadataObj = new JObject
+            {
+                ["user_id"] = userId,
+                ["room_id"] = roomId,
+                ["request_file_url"] = requestFileUrl,
+                ["request_evaluation"] = requestEvaluation,
+                ["request_actions"] = requestActions,
+                ["request_transcription"] = requestTranscription,
+                ["request_rule_violations"] = requestRuleViolations,
+                ["items"] = new JArray
                 {
-                    user_id = userId, // must be a unique user id
-                    room_id = roomId,
-                    request_file_url = requestFileUrl,
-                    request_evaluation = requestEvaluation,
-                    request_actions = requestActions,
-                    request_transcription = requestTranscription,
-                    request_rule_violations = requestRuleViolations,
-                    items = new[]
+                    new JObject
                     {
-                        new
-                        {
-                            id = "audio_1",
-                            type = "audio",
-                            mime = "audio/wav",
-                            part = partName,
-                        },
+                        ["id"] = "audio_1",
+                        ["type"] = "audio",
+                        ["mime"] = "audio/wav",
+                        ["part"] = partName,
                     },
-                }
-            );
+                },
+            };
+            string metadataJson = metadataObj.ToString(Formatting.None);
+            Debug.LogError("Metadata JSON: " + metadataJson);
 
             WWWForm form = new WWWForm();
             // Add the metadata part with explicit application/json content type.

@@ -1,0 +1,8 @@
+<!-- PRO/link.xml -->
+<linker>
+    <!-- Preserve all types in the package assembly defined by Runtime/Wildwest.Pro.asmdef -->
+    <assembly fullname="Wildwest.Pro" preserve="all" />
+
+    <!-- Preserve Newtonsoft.Json to ensure reflection-based (de)serialization works -->
+    <assembly fullname="Newtonsoft.Json" preserve="all" />
+</linker>
