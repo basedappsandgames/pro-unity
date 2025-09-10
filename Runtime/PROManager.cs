@@ -133,6 +133,7 @@ namespace Wildwest.Pro
             _requestTranscription = requestTranscription;
             _requestRuleViolations = requestRuleViolations;
             _sessionToken = sessionToken;
+            _isInitialized = true;
         }
 
         public void SetApiKey(string apiKey)
