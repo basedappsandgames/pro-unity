@@ -40,7 +40,7 @@ namespace Wildwest.Pro
         [SerializeField, Tooltip("Request rule violations from the backend")]
         private bool _requestRuleViolations = false;
 
-        private string _baseEndpointUrl = "https://staypro.hello-4d0.workers.dev"; // DO NOT CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING
+        private string _baseEndpointUrl = "https://staypro.dev"; // DO NOT CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING
 
         // Endpoint to upload voice chunks for moderation
         private string _moderationsEndpointPath = "/api/v1/moderations"; // DO NOT CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING
