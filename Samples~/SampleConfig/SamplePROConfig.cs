@@ -39,7 +39,7 @@ namespace Wildwest.Pro
         [SerializeField, Tooltip("Request rule violations from the backend")]
         private bool _requestRuleViolations = false;
 
-        private string _baseEndpointUrl = "https://staypro.hello-4d0.workers.dev"; // DO NOT CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING
+        private string _baseEndpointUrl = "https://staypro.dev"; // DO NOT CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING
 
         // Endpoint to upload voice chunks for moderation
         private string _moderationsEndpointPath = "/api/v1/moderations"; // DO NOT CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING
@@ -95,7 +95,7 @@ namespace Wildwest.Pro
 
         void OnDestroy()
         {
-            _recordingSource.Dispose();
+            _recordingSource?.Dispose();
         }
 
         private bool CanRecord()
@@ -139,25 +139,43 @@ namespace Wildwest.Pro
 
         private void OnData(PROManager.PROModerationResult[] data, string errorMessage)
         {
-            string scoresResults = "";
-            foreach (var score in data[0].SafetyScores)
+            bool hasResult = data != null && data.Length > 0 && data[0] != null;
+            if (!string.IsNullOrEmpty(errorMessage) || !hasResult)
             {
-                scoresResults += $"{score.Key}: {score.Value}, ";
+                string warningMessage = !string.IsNullOrEmpty(errorMessage)
+                    ? $"Moderation error: {errorMessage}"
+                    : "Moderation response did not contain any results.";
+                Debug.LogWarning($"[PRO] {warningMessage}");
+                if (!hasResult)
+                {
+                    return;
+                }
+            }
+
+            PROManager.PROModerationResult result = data[0];
+            string scoresResults = "";
+            if (result.SafetyScores != null)
+            {
+                foreach (var score in result.SafetyScores)
+                {
+                    scoresResults += $"{score.Key}: {score.Value}, ";
+                }
             }
             string transcriptionResults =
-                data[0].Transcription != null ? $" - {data[0].Transcription}" : "";
+                !string.IsNullOrEmpty(result.Transcription) ? $" - {result.Transcription}" : "";
             string actionsResults = "";
-            foreach (var action in data[0].Actions)
+            if (result.Actions != null)
             {
-                actionsResults += $"{action.Action.ToString()}, ";
+                foreach (var action in result.Actions)
+                {
+                    actionsResults += $"{action.Action.ToString()}, ";
+                }
             }
-            string errorResults = errorMessage != null ? $" - {errorMessage}" : "";
             Debug.Log(
                 "<color=yellow>[PRO] Chunk rated: "
                     + scoresResults
                     + transcriptionResults
                     + actionsResults
-                    + errorResults
                     + "</color>"
             );
         }
