@@ -9,6 +9,7 @@
   "changelogUrl": "https://staypro.hello-4d0.workers.dev/docs/getting-started",
   "licensesUrl": "https://staypro.hello-4d0.workers.dev/docs/getting-started",
   "dependencies": {
+    "com.unity.burst": "1.8.26",
     "com.unity.nuget.newtonsoft-json": "3.2.1",
     "com.unity.mathematics": "1.3.2"
   },
