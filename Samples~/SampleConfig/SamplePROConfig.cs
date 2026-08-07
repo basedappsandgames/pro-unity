@@ -139,18 +139,17 @@ namespace Wildwest.Pro
 
         private void OnData(PROManager.PROModerationResult[] data, string errorMessage)
         {
-            if (!string.IsNullOrEmpty(errorMessage))
+            bool hasResult = data != null && data.Length > 0 && data[0] != null;
+            if (!string.IsNullOrEmpty(errorMessage) || !hasResult)
             {
-                Debug.LogError($"<color=red>[PRO] Moderation error: {errorMessage}</color>");
-            }
-
-            if (data == null || data.Length == 0 || data[0] == null)
-            {
-                if (string.IsNullOrEmpty(errorMessage))
+                string warningMessage = !string.IsNullOrEmpty(errorMessage)
+                    ? $"Moderation error: {errorMessage}"
+                    : "Moderation response did not contain any results.";
+                Debug.LogWarning($"[PRO] {warningMessage}");
+                if (!hasResult)
                 {
-                    Debug.LogWarning("[PRO] Moderation response did not contain any results.");
+                    return;
                 }
-                return;
             }
 
             PROManager.PROModerationResult result = data[0];
@@ -172,15 +171,11 @@ namespace Wildwest.Pro
                     actionsResults += $"{action.Action.ToString()}, ";
                 }
             }
-            string errorResults = !string.IsNullOrEmpty(errorMessage)
-                ? $" - Error: {errorMessage}"
-                : "";
             Debug.Log(
                 "<color=yellow>[PRO] Chunk rated: "
                     + scoresResults
                     + transcriptionResults
                     + actionsResults
-                    + errorResults
                     + "</color>"
             );
         }

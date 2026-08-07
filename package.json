@@ -6,7 +6,6 @@
   "unity": "2021.3",
   "unityRelease": "0b4",
   "documentationUrl": "https://staypro.dev/docs/getting-started",
-  "changelogUrl": "https://github.com/basedappsandgames/pro-unity/releases",
   "licensesUrl": "https://github.com/basedappsandgames/pro-unity/blob/master/LICENSE",
   "dependencies": {
     "com.unity.burst": "1.8.26",
